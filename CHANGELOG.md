@@ -14,6 +14,10 @@ The `@WithSentry` decorator was deprecated. Use `@SentryExceptionCaptured` inste
 
 - "You miss 100 percent of the chances you don't take. — Wayne Gretzky" — Michael Scott
 
+## 8.40.0-beta.0
+
+- feat: Add LaunchDarkly and OpenFeature integrations for beta testing
+
 ## 8.39.0
 
 ### Important Changes
