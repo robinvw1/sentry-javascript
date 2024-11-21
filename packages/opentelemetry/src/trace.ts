@@ -176,17 +176,17 @@ function ensureTimestampInMilliseconds(timestamp: number): number {
 
 function getContext(scope: Scope | undefined, forceTransaction: boolean | undefined): Context {
   const ctx = getContextForScope(scope);
-  const actualScope = getScopesFromContext(ctx)?.scope;
-
   const parentSpan = trace.getSpan(ctx);
 
   // In the case that we have no parent span, we need to "simulate" one to ensure the propagation context is correct
   if (!parentSpan) {
-    const client = getClient();
+    const actualScope = getScopesFromContext(ctx)?.scope;
+    const propagationContext = actualScope && actualScope.getPropagationContext();
 
-    if (actualScope && client) {
-      const propagationContext = actualScope.getPropagationContext();
-
+    // If we are continuing an incoming trace, we use it
+    // This is signified by the presence of `parentSpanId` -
+    // if this is not set, then we are not continuing an incoming trace
+    if (propagationContext && propagationContext.parentSpanId) {
       // We store the DSC as OTEL trace state on the span context
       const traceState = makeTraceState({
         parentSpanId: propagationContext.parentSpanId,
@@ -197,7 +197,7 @@ function getContext(scope: Scope | undefined, forceTransaction: boolean | undefi
 
       const spanOptions: SpanContext = {
         traceId: propagationContext.traceId,
-        spanId: propagationContext.parentSpanId || propagationContext.spanId,
+        spanId: propagationContext.parentSpanId,
         isRemote: true,
         traceFlags: propagationContext.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE,
         traceState,
@@ -207,7 +207,8 @@ function getContext(scope: Scope | undefined, forceTransaction: boolean | undefi
       return trace.setSpanContext(ctx, spanOptions);
     }
 
-    // if we have no scope or client, we just return the context as-is
+    // if we have no scope, or the propagationContext is not continuing an incoming trace,
+    // we just let OTEL start a new trace
     return ctx;
   }
 
